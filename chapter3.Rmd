@@ -1,16 +1,24 @@
 # Logistic regression
 
-1. Read the data from local folder and check for structure and dimensions
+Load libraries
 
 ```{r}
 
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+
+```
+
+1. Read the data from local folder and check for structure and dimensions
+
+```{r}
 data2020 <- read.table("C:/LocalData/kpuukko/IODS-project/data/alc.txt", sep="\t")
 
 #There are 382 observations and 35 variables in the dataset
 str(data2020)
 dim(data2020)
-colnames(data2020)
-summarise(data2020) #198 Female and 184 Male students
+colnames(data2020) #198 Female and 184 Male students
 
 # Age distribution is from 15 to 22 years old, most of the students are 16 or 17 years old. 
 data2020 %>% group_by(age) %>% summarise(count = n())
@@ -31,9 +39,6 @@ H4: Men consume alcohol more than women.
 3. Numerically and graphically explore the distributions of your chosen variables and their relationships with alcohol consumption (use for example cross-tabulations, bar plots and box plots). Comment on your findings and compare the results of your exploration to your previously stated hypotheses. (0-5 points)
 
 ```{r}
-
-library(tidyr); library(dplyr); library(ggplot2)
-
 # A box plot of high_use and family relationship
 #As assumed, students who are high alcohol users have lower quality family relationships. 
 g1 <- ggplot(data2020, aes(x = high_use, y = famrel))
@@ -51,7 +56,7 @@ g3 + geom_boxplot() + ylab("Going out")
 
 # A box plot of alcohol use and going out
 #As assumed, men use alcohol more than women.  
-g4 <- ggplot(alc, aes(x = sex, y = alc_use))
+g4 <- ggplot(data2020, aes(x = sex, y = alc_use))
 g4 + geom_boxplot() + ylab("Alcohol use")
 ```
 4. Logistic regression analysis with family relationships, absences, going out and gender as predictors and high alcohol consumption as an outcome 
