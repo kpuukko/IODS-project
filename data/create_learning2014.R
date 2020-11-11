@@ -35,4 +35,11 @@ learning2014 <- filter(select(lrn14, one_of(c("gender","Age","Attitude", "deep",
 str(learning2014)#166 observations of 7 variables
 
 #Save the analysis dataset 
-write.csv(learning2014, "data/learning.csv", sep="\t")
+
+# Write students2014 as a csv-file to the data folder
+write.csv(learning2014, file = "data/learning2014.csv", sep="\t")
+
+# Write students2014 as a table to the data folder
+write.table(learning2014, file = "data/learning2014.txt", sep="\t")
+
+str(learning2014)
