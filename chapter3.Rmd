@@ -10,9 +10,7 @@ data2020 <- read.table("C:/LocalData/kpuukko/IODS-project/data/alc.txt", sep="\t
 str(data2020)
 dim(data2020)
 colnames(data2020)
-
-#198 Female and 184 Male students
-data2020 %>% group_by(sex) %>% summarise(count = n())
+summarise(data2020) #198 Female and 184 Male students
 
 # Age distribution is from 15 to 22 years old, most of the students are 16 or 17 years old. 
 data2020 %>% group_by(age) %>% summarise(count = n())
