@@ -22,6 +22,12 @@ output:
 
 ```
 
+***
+  
+```{r child = "chapter3.Rmd"}
+
+```
+
 1. Read the data from local folder and check for structure and dimensions
 
 ```{r}
