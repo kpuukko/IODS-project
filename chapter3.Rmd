@@ -68,6 +68,7 @@ g4 + geom_boxplot() + ylab("Alcohol use")
 ```{r}
 
 #Logistic regression analysis with family relationships, absences, going out and gender as predictors and high alcohol consumption as an outcome. 
+##The model confirmed that all the above variables are all significant predictors of high alcohol consumption 
 
 Mod1 <- glm(high_use ~ famrel + absences + goout + sex, data = alc, family = "binomial")
 summary(Mod1)
@@ -75,8 +76,7 @@ summary(Mod1)
 #print out coefficients
 coef(Mod1)
 
-#compute odds ratio. #The OR represents the odds that an outcome will occur given a particular exposure, 
-#compared to the odds of the outcome occurring in the absence of that exposure
+#compute odds ratio
 OR <- coef(Mod1) %>% exp
 
 #computer confidence intervals 
@@ -85,8 +85,8 @@ CI <- confint(Mod1) %>% exp
 ## print out the odds ratios with their confidence intervals
 cbind(OR, CI)
 
-#The model confirmed all the stated hypothesis: all the predictors are all significant predictors of high alcohol consumption 
-
+#The odds ratios of school absences, going out and sex male are above 1, meaning that they are positively related with high alcohol consumption.
+#Interestingly the odds ratio of family relationship was below 1. If i understood right, this means that there is lesser likelihood that family relationships are associated with high alcohol consumption.
 ```
 5. Explore the predictive power of you model. Provide a 2x2 cross tabulation of predictions versus the actual values and optionally display a graphic visualizing both the actual values and the predictions. Compute the total proportion of inaccurately classified individuals (= the training error) and comment on all the results. 
 
@@ -96,7 +96,7 @@ cbind(OR, CI)
 Mod1 <- glm(high_use ~ famrel + absences + goout + sex, data = alc, family = "binomial")
 
 # predict() the probability of high_use
-probabilities <- predict(m, type = "response")
+probabilities <- predict(Mod1, type = "response")
 
 # add the predicted probabilities to 'alc'
 alc <- mutate(alc, probability = probabilities)
@@ -105,11 +105,9 @@ alc <- mutate(alc, probability = probabilities)
 alc <- mutate(alc, prediction = probability > 0.5)
 
 # see the last ten original classes, predicted probabilities, and class predictions
-select(alc, failures, absences, sex, high_use, probability, prediction) %>% tail(10)
+select(alc, famrel, absences, goout, sex, high_use, probability, prediction) %>% tail(10)
 
 # tabulate the target variable versus the predictions
-table(high_use = alc$high_use, prediction = alc$prediction)
-
-
+table(high_use = alc$high_use, prediction = alc$prediction) %>% prop.table %>% addmargins
 ```
  
