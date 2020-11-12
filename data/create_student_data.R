@@ -8,6 +8,8 @@ setwd('C:/LocalData/kpuukko/IODS-project/data')
 student_mat <- read.csv("student-mat.csv", sep=";", header=TRUE)
 student_por <- read.csv("student-por.csv", sep=";", header=TRUE)
 
+str(students2014)
+
 
 #Explore the structure and dimensions of the data.
 
@@ -70,3 +72,7 @@ glimpse(alc)
 # Save the data
 
 write.csv(alc, file = "data/alc.csv", row.names = FALSE)
+
+write.table(alc, file = "data/alc.txt", sep="\t")
+
+write.table(d, file = "data.csv", sep = ",", row.names = T)

@@ -10,66 +10,106 @@ library(ggplot2)
 
 ```
 
-1. Read the data from local folder and check for structure and dimensions
+1. Read the data from local folder and check for structure and dimensions. Print out the names of the variables in the data and describe the data set briefly, assuming the reader has no previous knowledge of it. 
 
 ```{r}
-data2020 <- read.table("C:/LocalData/kpuukko/IODS-project/data/alc.txt", sep="\t")
+alc <- read.table("C:/LocalData/kpuukko/IODS-project/data/alc.txt", sep="\t")
 
-#There are 382 observations and 35 variables in the dataset
-str(data2020)
-dim(data2020)
-colnames(data2020) #198 Female and 184 Male students
+#There are 382 observations and 35 variables in the data set
+str(alc)
+dim(alc)
+summary(alc)
 
-# Age distribution is from 15 to 22 years old, most of the students are 16 or 17 years old. 
-data2020 %>% group_by(age) %>% summarise(count = n())
+#Names of the variables
+colnames(alc)
 
-#Draw a bar plot of each variable
-gather(data2020) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar()
+table(alc$sex) #198 Female and 184 Male students
+table(alc$age) # Age distribution is from 15 to 22, most of the students are 16 or 17 years old. 
+table(alc$high_use) #114 of students are high alcohol users, 268 are not
+
+# A bar plot of each variable
+gather(alc) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar()
 
 ```
 2. I will study the relationship between gender, school absenses, going out, famrel and alcohol consumption
 
 Hypothesis
 
-H1: Higher quality of family relationships reduce the risk for high alcohol consumption. 
-H2: School absenses are positively related to high alcohol consumption. 
+H1: High quality of family relationships reduce the risk for high alcohol consumption. 
+H2: School absenses increase the risk for high alcohol consumption. 
 H3: Going out increases the risk for high alcohol consumption.
-H4: Men consume alcohol more than women. 
+H4: Male students use more alcohol than female students.  
 
 3. Numerically and graphically explore the distributions of your chosen variables and their relationships with alcohol consumption (use for example cross-tabulations, bar plots and box plots). Comment on your findings and compare the results of your exploration to your previously stated hypotheses. (0-5 points)
 
 ```{r}
 # A box plot of high_use and family relationship
 #As assumed, students who are high alcohol users have lower quality family relationships. 
-g1 <- ggplot(data2020, aes(x = high_use, y = famrel))
+g1 <- ggplot(alc, aes(x = high_use, y = famrel))
 g1 + geom_boxplot() + ylab("Family relationship")
 
 # A box plot of high_use and school absenses
 #Students who consume more alcohol have slightly more school absenses compared to students who are not high users. However, the differences between the groups appears really small. 
-g2 <- ggplot(data2020, aes(x = high_use, y = absences))
+g2 <- ggplot(alc, aes(x = high_use, y = absences))
 g2 + geom_boxplot() + ylab("School absenses")
 
 # A box plot of high_use and going out
 #As assumed, students who are high alcohol users go out more than other students.  
-g3 <- ggplot(data2020, aes(x = high_use, y = goout))
+g3 <- ggplot(alc, aes(x = high_use, y = goout))
 g3 + geom_boxplot() + ylab("Going out")
 
 # A box plot of alcohol use and going out
 #As assumed, men use alcohol more than women.  
-g4 <- ggplot(data2020, aes(x = sex, y = alc_use))
+g4 <- ggplot(alc, aes(x = sex, y = alc_use))
 g4 + geom_boxplot() + ylab("Alcohol use")
 ```
-4. Logistic regression analysis with family relationships, absences, going out and gender as predictors and high alcohol consumption as an outcome 
+4. Logistic regression analysis with family relationships, absences, going out and gender as predictors and high alcohol consumption as an outcome.  Present and interpret a summary of the fitted model. Present and interpret the coefficients of the model as odds ratios and provide confidence intervals for them. 
 
 ```{r}
 
-Mod1 <- glm(high_use ~ famrel + absences + goout + sex, data = data2020, family = "binomial")
+#Logistic regression analysis with family relationships, absences, going out and gender as predictors and high alcohol consumption as an outcome. 
+
+Mod1 <- glm(high_use ~ famrel + absences + goout + sex, data = alc, family = "binomial")
 summary(Mod1)
+
+#print out coefficients
+coef(Mod1)
+
+#compute odds ratio. #The OR represents the odds that an outcome will occur given a particular exposure, 
+#compared to the odds of the outcome occurring in the absence of that exposure
+OR <- coef(Mod1) %>% exp
+
+#computer confidence intervals 
+CI <- confint(Mod1) %>% exp
+
+## print out the odds ratios with their confidence intervals
+cbind(OR, CI)
+
+#The model confirmed all the stated hypothesis: all the predictors are all significant predictors of high alcohol consumption 
 
 ```
 5. Explore the predictive power of you model. Provide a 2x2 cross tabulation of predictions versus the actual values and optionally display a graphic visualizing both the actual values and the predictions. Compute the total proportion of inaccurately classified individuals (= the training error) and comment on all the results. 
 
 ```{r}
+
+# fit the model
+Mod1 <- glm(high_use ~ famrel + absences + goout + sex, data = alc, family = "binomial")
+
+# predict() the probability of high_use
+probabilities <- predict(m, type = "response")
+
+# add the predicted probabilities to 'alc'
+alc <- mutate(alc, probability = probabilities)
+
+# use the probabilities to make a prediction of high_use
+alc <- mutate(alc, prediction = probability > 0.5)
+
+# see the last ten original classes, predicted probabilities, and class predictions
+select(alc, failures, absences, sex, high_use, probability, prediction) %>% tail(10)
+
+# tabulate the target variable versus the predictions
+table(high_use = alc$high_use, prediction = alc$prediction)
+
 
 ```
  
