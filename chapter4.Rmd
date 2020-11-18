@@ -1,71 +1,197 @@
-# Regression analysis 
+# Clustering and classification
 
-*Describe the work you have done this week and summarize your learning.*
-
-1. Read the data from local folder and check for structure and dimensions
+In this exercise, we use the Boston data set, which describes the housing Values in suburbs of Boston. The data frame has in total 506 observations and 14 variables. For complete descriptions please see:  https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/Boston.html
 
 ```{r}
 
+# install packages
+install.packages("corrplot")
+
+# access the MASS package
+library(MASS)
+library(tidyr)
+library(dplyr)
 library(ggplot2)
+library(corrplot)
 library(GGally)
 
-students2014 <- read.table("C:/LocalData/kpuukko/IODS-project/data/learning2014.txt", sep="\t")
+# load the data
+data("Boston")
 
-str(students2014)
-dim(students2014)
-
-#The data includes 7 variables and 166 observations. 
-#stra, surf, stra are numerical sum variables.
-#age, attitude and points are integer variables.
-#gender is character variable
+# explore the dataset
+str(Boston)
+dim(Boston)
 
 ```
-2. Show a graphical overview of the data and show summaries of the variables in the data. 
+Next, I will plot distributions of the variables and check the summaries of the variables. In most cases the data is not normally distributed (but heavily skewed).
 
 ```{r}
 
 #show graphical overview of the data
-p <- ggpairs(students2014, mapping = aes(), lower = list(combo = wrap("facethist", bins = 20)))
-p
+gather(Boston) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar(fill="blue", color="blue", alpha=0.9)
 
-#show summaries of the variables in the data
-
-summary(students2014)
-
-# draw a scatter plot matrix of the variables in student2014.
-# [-1] excludes the first column (gender)
-pairs(students2014[-1])
+# summaries of the variables in the data
+summary(Boston)
 
 ```
 
-3. Choose three variables as explanatory variables and fit a regression model where exam points is the target (dependent) variable. Show a summary of the fitted model and comment and interpret the results. Explain and interpret the statistical test related to the model parameters. If an explanatory variable in your model does not have a statistically significant relationship with the target variable, remove the variable from the model and fit the model again without it. (0-4 points)
+Too see the relationships between the variables let's plot correlation matrix. The two variables "rad" - index of accessibility to radial highways and "tax" - full-value property-tax rate per \$10,000 respectively are most strongly correlated (r=0.91). Interestingly, the "crim" - per capita crime rate, has most strong positive correlation with these variables. 
 
 ```{r}
 
-# Linear regression model as  *stra*, *deep* and *Attitude* as predictors and *Points* as an outcome 
-model1 <- lm(Points ~ stra + deep + Attitude, data = students2014)
-summary(model1)
+#calculate correlation matrix
+cor_matrix<-cor(Boston) %>% round(digits = 2)
 
-#Only attitude is statistically significant  and therefore I only include it to the second model
-model2 <- lm(Points ~ Attitude, data = students2014)
-summary(model2)
+# print the correlation matrix
+cor_matrix
+
+# visualize the correlation matrix
+corrplot(cor_matrix, method="circle", type="upper", cl.pos="b", tl.pos="d", tl.cex = 0.6)
 
 ```
-4. Using a summary of your fitted model, explain the relationship between the chosen explanatory variables and the target variable (interpret the model parameters). Explain and interpret the multiple R squared of the model. (0-3 points)
+Next, I standardize the dataset and print out summaries of the scaled data. Looks like the distributions are still skewed, but variable values are scaled around zero (mean). Using the class function() we see that the data set is a matrix. Later we will want the data to be a data frame. Let's use as.data.frame() function to convert the boston_scaled to the right format.
 
 ```{r}
 
-# The parameter estimates show that attitude has positive correlation with the attitude. Participants with more positive attitude score more points.
-# The multiple of R squared of the model shows that 19% of the variation is points is explained by the attitude. 
+# center and standardize variables
+boston_scaled <- scale(Boston)
+
+# summaries of the scaled variables
+summary(boston_scaled)
+
+# class of the boston_scaled object
+class(boston_scaled)
+
+# change the object to data frame
+boston_scaled <- as.data.frame(boston_scaled)
 
 ```
-5. Produce the following diagnostic plots: Residuals vs Fitted values, Normal QQ-plot and Residuals vs Leverage. Explain the assumptions of the model and interpret the validity of those assumptions based on the diagnostic plots. (0-3 points)
+Next, I create a categorical variable of the crime rate in the Boston dataset (from the scaled crime rate). I use the quantiles as the break points in the categorical variable. The old crime rate variable is dropped from the data set and the categorical variable added to the scaled data set.
 
 ```{r}
 
-par(mfrow = c(2,2))
-plot(model2, which = c(1, 2, 5))
+# summary of the scaled crime rate
+summary(boston_scaled$crim)
 
-# Residual vs. Fitter points spread quite randomly
-#Normal Q-Q plot points fits nicely to the line 
-#Residuals vs Leverage no outliers stand out 
+# create a quantile vector of crim and print it
+bins <- quantile(boston_scaled$crim)
+bins
+
+# create a categorical variable 'crime'
+crime <- cut(boston_scaled$crim, breaks = bins, include.lowest = TRUE, labels = c("low", "med_low", "med_high", "high"))
+
+# look at the table of the new factor crime
+table(crime)
+
+# remove original crim from the dataset
+boston_scaled <- dplyr::select(boston_scaled, -crim)
+
+# add the new categorical value to scaled data
+boston_scaled <- data.frame(boston_scaled, crime)
+```
+
+Next, I will divide the dataset to train and test sets, so that 80% of the data belongs to the train set. 
+
+```{r}
+# number of rows in the Boston dataset 
+n <- nrow(boston_scaled)
+
+# choose randomly 80% of the rows
+ind <- sample(n,  size = n * 0.8)
+
+# create train set
+train <- boston_scaled[ind,]
+
+# create test set 
+test <- boston_scaled[-ind,]
+
+# save the correct classes from test data
+correct_classes <- test$crime
+
+# remove the crime variable from test data
+test <- dplyr::select(test, -crime)
+```
+
+Fit the linear discriminant analysis on the train set. Use the categorical crime rate as the target variable 
+and all the other variables in the dataset as predictor variables. Draw the LDA (bi)plot.
+```{r}
+
+# linear discriminant analysis
+lda.fit <- lda(crime ~ ., data = train)
+
+# print the lda.fit object
+lda.fit
+
+# the function for lda biplot arrows
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "orange", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+
+# target classes as numeric
+classes <- as.numeric(train$crime)
+
+# plot the lda results
+plot(lda.fit, dimen = 2, col = classes, pch = classes)
+lda.arrows(lda.fit, myscale = 1)
+
+```
+Then I will predict the classes with the LDA model on the test data and cross tabulate the results with the crime categories from the test set. Looks like all the predictions are on the diagonal and quite good.  
+
+```{r}
+
+# predict classes with test data
+lda.pred <- predict(lda.fit, newdata = test)
+
+# cross tabulate the results
+table(correct = correct_classes, predicted = lda.pred$class)
+
+```
+Next I will reload the Boston dataset and standardize the dataset.
+
+```{r}
+
+data('Boston')
+Boston = scale(Boston)
+Boston <- as.data.frame(Boston)
+
+```
+Then I calculate the distances between the observations.
+
+```{r}
+
+# euclidean distance matrix
+dist_eu <- dist(Boston)
+
+# look at the summary of the distances
+summary(dist_eu)
+
+# manhattan distance matrix
+dist_man <- dist(Boston, method = 'manhattan')
+
+# look at the summary of the distances
+summary(dist_man)
+
+```
+
+Run k-means algorithm on the dataset. Investigate what is the optimal number of clusters and run the algorithm again.
+
+```{r}
+# k-means clustering
+km <-kmeans(Boston, centers = 3)
+
+# plot the Boston dataset with clusters
+pairs(Boston, col = km$cluster)
+
+```
+Visualize the clusters (for example with the pairs() or ggpairs() functions, where the clusters are separated with colors) and interpret the results. (0-4 points)
+
+
+```{r}
+
+```
+
