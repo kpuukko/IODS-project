@@ -2,12 +2,9 @@
 
 In this exercise, we use the Boston data set, which describes the housing Values in suburbs of Boston. The data frame has in total 506 observations and 14 variables. For complete descriptions please see:  https://stat.ethz.ch/R-manual/R-devel/library/MASS/html/Boston.html
 
-```{r}
+```{r warning=FALSE}
 
-# install packages
-install.packages("corrplot")
-
-# access the MASS package
+#Load libraries
 library(MASS)
 library(tidyr)
 library(dplyr)
@@ -23,7 +20,7 @@ str(Boston)
 dim(Boston)
 
 ```
-Next, I will plot distributions of the variables and check the summaries of the variables. In most cases the data is not normally distributed (but heavily skewed).
+Next, I will plot distributions of the variables and check the summaries of the variables. Looks like the data is not normally distributed but quite heavily skewed.
 
 ```{r}
 
@@ -160,7 +157,7 @@ Boston = scale(Boston)
 Boston <- as.data.frame(Boston)
 
 ```
-Then I calculate the distances between the observations.
+Then I calculate the distances between the observations. Looks like the distances are clearly shorter than they should be.
 
 ```{r}
 
@@ -178,20 +175,38 @@ summary(dist_man)
 
 ```
 
-Run k-means algorithm on the dataset. Investigate what is the optimal number of clusters and run the algorithm again.
+Here, I run k-means with three centers and draw correlation plots, with data point colors corresponding with clusters. 
 
 ```{r}
 # k-means clustering
 km <-kmeans(Boston, centers = 3)
 
 # plot the Boston dataset with clusters
-pairs(Boston, col = km$cluster)
+pairs(Boston, col = km$cluster) #whole dataset
+pairs(Boston[6:10], col = km$cluster) #pair up columns 6 to 10
 
 ```
-Visualize the clusters (for example with the pairs() or ggpairs() functions, where the clusters are separated with colors) and interpret the results. (0-4 points)
 
+To determine the optimal number of clusters. I set the maximum number of clusters to 10 and calculate the total of within cluster sum of squares (WCSS). The WCSS drops radically after 1 or 2. Therefore I would say that 2 clusters is the optimal number of clusters. 
 
 ```{r}
+#K-means might produce different results every time, because it randomly assigns the initial cluster centers. The function set.seed() can be used to deal with that.
+set.seed(123)
+
+#Trying first with max 10 clusters
+k_max <- "10"
+
+#When you plot the number of clusters and the total WCSS, the optimal number of clusters is when the total WCSS drops radically. 
+twcss <- sapply(1:k_max, function(k){kmeans(Boston, k)$tot.withinss})
+
+# visualize the results
+qplot(x = 1:k_max, y = twcss, geom = 'line')
+
+# k-means clustering
+km <-kmeans(Boston, centers = 2)
+
+# plot the Boston dataset with clusters
+pairs(Boston, col = km$cluster)
 
 ```
 
