@@ -1,0 +1,67 @@
+# Clustering and classification
+
+First, i set all the necessary libraries. 
+
+```{r}
+library(GGally)
+library(dplyr)
+library(corrplot)
+```
+
+In this exercise, we use the human data set, which originates from the United Nations Development Programme. 
+The data frame has in total 155 observations and 8 variables describing measures of average achievement in key dimensions of human development: a long and healthy life, being knowledgeable and have a decent standard of living.  
+
+```{r warning=FALSE}
+
+#I read the human data from the internet link that was given to us.
+
+human <- read.table("http://s3.amazonaws.com/assets.datacamp.com/production/course_2218/datasets/human2.txt", sep=",", header=T)
+
+str(human)
+colnames(human)
+
+```
+Next, I will check the summaries of the variables and show graphical overview of the data. The variable distributions differ from each other. For instance, variables Edu2.FM, Labo.FM, Edu.Exp are quite normally distributed. Whereas GNI and Mat.Mor and Add.Birth are curved to the right, meaning that they have less high values. Life.Exp is more curved to the right, meaning that most of the participants score high values.
+
+```{r}
+
+# summaries of the variables in the data
+summary(human)
+
+#show graphical overview of the data
+ggpairs(human)
+
+```
+
+Too see the relationships between the variables let's plot correlation matrix. Overall, the correlations are quite small in most of the cases. For instance, the correlation between Parli.F and Ado.Birth and Parli.F and Edu2.FM. However, some variables are quite strongly correlated, such as Life.Exp and Mat.Mor and Mat.Mor and Edu2.FM.
+```{r}
+
+#calculate correlation matrix
+cor_matrix<-cor(human) %>% round(digits = 2)
+
+# print the correlation matrix
+cor_matrix
+
+# visualize the correlation matrix
+cor(human)%>%corrplot()
+
+```
+Next, I will now do the PCA on unstandardized human data and plot the result.
+The idea of principal component analysis is that it shows which variables count most of the variance within the data. 
+
+```{r}
+
+pca_human <- prcomp(human)
+biplot(pca_human, choices = 1:2, cex=c(0.8,1), col = c("grey40", "deeppink2"))
+
+```
+Then I will run the PCA again with standardized data. We can see the PCA analysis that is done with unstandardized and standardized data differs signifigantly from each other. In the unstandardized data variable GNI appears to explain substantial portion of the variance. However, the variable values are clearly higher compared to other variables. Therefore, it's a good idea to standardize the data. Standardising the data shows that there more than one PC that explains the all the variance and mainly two variables correlated with the second principal component.
+
+```{r}
+
+human_std<-scale(human)
+
+pca_human2 <- prcomp(human_std)
+biplot(pca_human2, choices = 1:2, cex=c(0.8,1), col = c("grey40", "deeppink2"))
+
+```
