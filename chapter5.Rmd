@@ -1,4 +1,4 @@
-# Clustering and classification
+# Dimensionality reduction techniques
 
 First, i set all the necessary libraries. 
 
