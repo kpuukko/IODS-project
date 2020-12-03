@@ -1,0 +1,214 @@
+# Longitudinal data
+
+Read libraries
+
+```{r}
+
+library(MASS)
+library(tidyverse)
+library(ggplot2)
+library(corrplot)
+library(knitr)
+library(GGally)
+library(sjPlot)
+library(effects)
+library(carData)
+library(FactoMineR)
+library(lme4)
+
+
+```
+In this exercise, we use BPRSL and RATS data sets, which are in long form. 
+
+BPRS describes Brief psychiatric rating scale that is measured before treatment and the following 8 weeks. 
+There are in total 40 participants and two treatment groups (20 participants in each group). All the participants are males.The data frame has in total 360 observations and 5 variables. 
+
+RATS data describes results from a nutrition study. The data contains three groups of rats who have different diets.  
+There are in total 176 rows obsercations and 5 variables. 
+
+```{r warning=FALSE}
+
+# Read the data sets
+
+BPRS <- read.table("C:/LocalData/kpuukko/IODS-project/data/BPRSL.txt", sep="\t")
+RATS <- read.table("C:/LocalData/kpuukko/IODS-project/data/RATSL.txt", sep="\t")
+
+#Explore the structure of the data and check summaries
+
+dim(BPRS)
+dim(RATS)
+
+summary(BPRS)
+summary(RATS)
+
+```
+Next, I will convert categorical variables into factors.
+
+```{r}
+
+BPRS$treatment <- factor(BPRS$treatment)
+BPRS$subject <- factor(BPRS$subject)
+
+RATS$ID <- factor(RATS$ID)
+RATS$Group <- factor(RATS$Group)
+
+```
+First, let's plot the RATS data. From the plots below, can see that the weight of the individual rats differ clearly between group 1 and groups 2 and 3. The rats in group 1 have lower starting weights and overall more steady weights compared to other groups. Whereas both in groups 2 and 3 rats weight increase. Also it appears that the weight of rats is higher in group 3 than in group 2. 
+
+```{r}
+
+ggplot(RATS, aes(x = Time, y = Weight, group = ID)) +
+  geom_line()+
+  scale_x_continuous(name = "Time (days)", breaks = seq(0, 60, 10)) +
+  scale_y_continuous(name = "Weight (grams)") +
+  theme(legend.position = "top") +
+  facet_wrap(. ~ Group) 
+
+```
+Next I will visualize the same thing with standardized data using chapter 8 of MABS (Kimmo’s book). Standardising data helps to track whether the differences in individual weight changes over time is merely an effect of different starting weights. The plot with standardized weights confirms the same trend as before, rats in group 2 and 3 are heavier than in group 1.
+
+```{r}
+
+RATS <- RATS %>%
+  group_by(Time) %>%
+  mutate(stdval = (Weight - mean(Weight))/sd(Weight) ) %>%
+  ungroup()
+
+ggplot(RATS, aes(x = Time, y = Weight, group = ID)) +
+  geom_line()+
+  scale_x_continuous(name = "Time (days)", breaks = seq(0, 60, 10)) +
+  scale_y_continuous(name = "Weight (grams)") +
+  theme(legend.position = "top") +
+  facet_wrap(. ~ Group) 
+
+```
+Next, I will summarise the measures, the mean and its standard error of the individuals at each time step. The plot below described the group means and the corresponding standard errors (as error bars). The mean weights show again show the same trend: rats in group 3 are the heaviest and in group 1 lightest. Standard errors are largest in group 2, whereas in group 1 very small.
+
+```{r}
+
+# Summary data with mean and standard error of weight by group and time 
+n <- RATS$Time %>% unique() %>% length()
+n #11
+
+RATSS <- RATS %>%
+  group_by(Group, Time) %>%
+  summarise( mean = mean(Weight), se = sd(Weight)/sqrt(n) )%>%
+  ungroup()
+
+ggplot(RATSS, aes(x = Time, y = mean, linetype = Group, shape = Group)) +
+  geom_line() +
+  scale_linetype_manual(values = c(1,2,3)) +
+  geom_point(size=3) +
+  scale_shape_manual(values = c(1,2,3)) +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se, linetype="1"), width=0.3) +
+  theme(legend.position = c(0.8,0.8)) +
+  scale_y_continuous(name = "mean(Weight) +/- se(Weight)")
+
+```
+
+Next, I will create a summary data by groups and ID with mean as the summary variable. Below are the box plots of the  group means. Again the standard errors appear to be largest in group 2, whereas in group 1 very small. Note there is one clear outlier, which could be removed. 
+
+```{r}
+
+RATSID <- RATS %>%
+  group_by(Group, ID) %>%
+  summarise( mean=mean(Weight) ) %>%
+  ungroup()
+
+ggplot(RATSID, aes(x = Group, y = mean)) +
+  geom_boxplot() +
+  stat_summary(fun.y = "mean", geom = "point", shape=23, size=4, fill = "white") +
+  scale_y_continuous(name = "mean(Weight)")
+
+```
+Next, I will continues analysis with BPRSL data. First, let’s do some plotting with the BPRS data. Looks like in treatment group 1, BPRS score is weekly getting smaller during the 8 week study period. Whereas in the treatment group 2 the BPRS score is higher and slightly increasing during the same study period. 
+
+```{r}
+
+ggplot(BPRS, aes(x = week, y = bprs, linetype = subject)) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  theme(legend.position = "none") + 
+  scale_y_continuous(limits = c(min(BPRS$bprs), max(BPRS$bprs)))
+
+```
+Also the plot below shows the same trend.
+
+```{r}
+
+#Basic
+
+ggplot(BPRS, aes(x = week, y = bprs, group = treatment)) +
+  geom_smooth(aes(linetype = treatment)) +
+  scale_x_continuous(name = "week", breaks = seq(0, 20)) +
+  scale_y_continuous(name = "bprs") +
+  theme(legend.position = "top")
+
+```
+
+Then, I  will conduct a linear regression model with bprs as an outcome and week and treatment as predictors. Week, is significantly related to BPRS, but treatment is not. Multiple R-squared is 0.1851, indicating that so together the model explains less than 20% of the variation in BPRS.
+
+```{r}
+
+Mod1 <- lm(bprs ~ week + treatment, data = BPRS)
+summary(Mod1)
+
+```
+Then, let's create a random intercept model, where subject has been included as a random effect. The model suggests that a substantial part of the variance in the intercept can be ascribed to the subjects.
+
+```{r}
+
+#Random intercept model
+Model2<- lmer(bprs ~ week + treatment + (week | subject), data = BPRS, REML = FALSE)
+summary(Model2)
+
+```
+Then I will add the random slope model. The results indicate that the model with both random intercept and random slope explain clearly more variance than the model with only random intercept.
+
+```{r}
+
+Model3 <- lmer(bprs ~ week + treatment + (week | subject), data = BPRS, REML = FALSE)
+summary(Model3)
+
+```
+Finally, I will test the model with interaction between treatment and time. The results show that Model4 with interaction is better than Model 3. However, the model improvement is not significant.
+
+```{r}
+
+Model4 <- lmer(bprs ~ week * treatment + (week | subject), data = BPRS, REML = FALSE)
+summary(Model4)
+
+anova(Model4, Model3)
+
+```
+Here I plot the fitted values for each subject:
+
+```{r}
+
+ggplot(BPRS, aes(x = week, y = bprs, linetype = subject)) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  theme(legend.position = "none") + 
+  scale_y_continuous(limits = c(min(BPRS$bprs), max(BPRS$bprs)))
+
+```
+Here are plots of the Model 4 with interaction between week and treatment. Looks like including the interaction between week and treatment leads to slightly different predictors over time compared to the model3 without interactions.
+
+```{r}
+
+Fitted <- fitted(Model4)
+
+BPRS <- BPRS %>%
+  mutate(Fitted)
+
+ggplot(BPRS, aes(x = week, y = Fitted, linetype = subject)) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  theme(legend.position = "none") + 
+  scale_y_continuous(limits = c(min(BPRS$bprs), max(BPRS$bprs)))
+
+```
+
